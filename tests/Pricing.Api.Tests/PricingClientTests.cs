@@ -37,6 +37,19 @@ public class PricingClientTests : IClassFixture<PricingApiFactory>
     }
 
     [Fact]
+    public async Task Recalculates_a_quote_with_another_term()
+    {
+        var quote = await _client.CalculateQuoteAsync(new QuoteRequest("EQ-STD", "excavator", 90_000m, 36));
+
+        var recalculated = await _client.RecalculateQuoteAsync(quote.QuoteId, 48);
+
+        recalculated.QuoteId.Should().Be(quote.QuoteId);
+        recalculated.TermMonths.Should().Be(48);
+        recalculated.ResidualPercent.Should().Be(28m);
+        recalculated.MonthlyPayment.Should().BeLessThan(quote.MonthlyPayment);
+    }
+
+    [Fact]
     public async Task Unknown_quote_is_null()
     {
         (await _client.GetQuoteAsync(Guid.NewGuid())).Should().BeNull();

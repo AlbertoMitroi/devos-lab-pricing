@@ -23,4 +23,11 @@ internal sealed class PricingClient(HttpClient httpClient) : IPricingClient
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<PricedQuote>(cancellationToken);
     }
+
+    public async Task<PricedQuote> RecalculateQuoteAsync(Guid quoteId, int termMonths, CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PostAsJsonAsync($"api/quotes/{quoteId}/recalculate", new { termMonths }, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<PricedQuote>(cancellationToken))!;
+    }
 }

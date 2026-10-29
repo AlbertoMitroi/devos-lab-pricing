@@ -1,0 +1,140 @@
+# Ground truth for lab-pricing, written from its source only (no README, no engine output).
+# Each item: question, expected answer, file:line evidence. Any later change is logged with reason and evidence.
+repository: lab-pricing
+sourceCommit: dc681083664847e8fde28013d9c6003f291af956
+tags:
+  v1.0.0: 24df09d89cfa28671b47f1da67ea61ab5122615f
+  v1.1.0: dc681083664847e8fde28013d9c6003f291af956
+items:
+  - id: pricing-projects
+    area: references
+    question: Which projects are in this repository and which one is packed?
+    expected: Pricing.Api (web application, not packed), Pricing.Client (packed as NuGet package Pricing.Client), Pricing.Api.Tests (tests). Pricing.Client has no project reference to Pricing.Api.
+    evidence:
+      - src/Pricing.Api/Pricing.Api.csproj:1
+      - src/Pricing.Client/Pricing.Client.csproj:4
+      - tests/Pricing.Api.Tests/Pricing.Api.Tests.csproj:1
+
+  - id: pricing-client-version
+    area: packages
+    question: What is the default package version at this commit, and what changed from 1.0.0?
+    expected: 1.1.0. Version 1.1.0 adds IPricingClient.RecalculateQuoteAsync; 1.0.0 (tag v1.0.0) has only CalculateQuoteAsync and GetQuoteAsync.
+    evidence:
+      - Directory.Build.props:7
+      - src/Pricing.Client/IPricingClient.cs:9
+      - src/Pricing.Client/IPricingClient.cs:10
+
+  - id: pricing-controller-endpoints
+    area: http
+    question: Which endpoints does QuotesController expose?
+    expected:
+      - POST api/quotes (Calculate)
+      - "GET api/quotes/{id:guid} (Get)"
+      - "POST api/quotes/{id:guid}/recalculate (Recalculate)"
+    evidence:
+      - src/Pricing.Api/Controllers/QuotesController.cs:24
+      - src/Pricing.Api/Controllers/QuotesController.cs:27
+      - src/Pricing.Api/Controllers/QuotesController.cs:41
+      - src/Pricing.Api/Controllers/QuotesController.cs:48
+
+  - id: pricing-minimal-endpoints
+    area: http
+    question: Which minimal API endpoints exist?
+    expected:
+      - "GET /api/rate-cards/{productCode}"
+      - GET /api/residual-values (query assetType, termMonths)
+      - GET /health
+    evidence:
+      - src/Pricing.Api/Endpoints/RateCardEndpoints.cs:14
+      - src/Pricing.Api/Endpoints/RateCardEndpoints.cs:16
+      - src/Pricing.Api/Endpoints/RateCardEndpoints.cs:21
+      - src/Pricing.Api/Program.cs:31
+
+  - id: pricing-endpoint-auth
+    area: authorization
+    question: Do the Pricing API endpoints require authentication?
+    expected: No. Program.cs adds no authentication or authorization and no endpoint carries a policy.
+    evidence:
+      - src/Pricing.Api/Program.cs:7
+      - src/Pricing.Api/Program.cs:29
+
+  - id: pricing-tables
+    area: data
+    question: Which tables does the EF Core model map, and with which seed data?
+    expected:
+      - "rate_cards (key ProductCode; seed EQ-STD 5.9% 12 to 60 months, EQ-FLEX 6.4% 6 to 48 months)"
+      - "residual_values (key AssetType + TermMonths; seed forklift 36/25, forklift 48/18, excavator 36/35, excavator 48/28)"
+      - quotes (key Id)
+    evidence:
+      - src/Pricing.Api/Data/PricingDbContext.cs:17
+      - src/Pricing.Api/Data/PricingDbContext.cs:19
+      - src/Pricing.Api/Data/PricingDbContext.cs:26
+      - src/Pricing.Api/Data/PricingDbContext.cs:28
+      - src/Pricing.Api/Data/PricingDbContext.cs:37
+
+  - id: pricing-database
+    area: data
+    question: Which database provider and connection string does the API use?
+    expected: EF Core with Npgsql (PostgreSQL), connection string ConnectionStrings:PricingDb. Database:EnsureCreated creates the schema at start when true.
+    evidence:
+      - src/Pricing.Api/Program.cs:12
+      - src/Pricing.Api/Program.cs:17
+
+  - id: pricing-config-keys
+    area: config
+    question: Which configuration keys do the API settings files define, per environment?
+    expected: ConnectionStrings:PricingDb and Database:EnsureCreated in appsettings.json, appsettings.Local.json and appsettings.Docker.json. No password is stored in any settings file.
+    evidence:
+      - src/Pricing.Api/appsettings.json:10
+      - src/Pricing.Api/appsettings.json:13
+      - src/Pricing.Api/appsettings.Local.json:3
+      - src/Pricing.Api/appsettings.Docker.json:3
+
+  - id: pricing-client-calls
+    area: http
+    question: Which HTTP calls does Pricing.Client make, and which API endpoint answers each?
+    expected:
+      - "CalculateQuoteAsync: POST api/quotes, answered by QuotesController.Calculate"
+      - "GetQuoteAsync: GET api/quotes/{quoteId}, answered by QuotesController.Get"
+      - "RecalculateQuoteAsync: POST api/quotes/{quoteId}/recalculate, answered by QuotesController.Recalculate"
+    evidence:
+      - src/Pricing.Client/PricingClient.cs:10
+      - src/Pricing.Client/PricingClient.cs:17
+      - src/Pricing.Client/PricingClient.cs:29
+      - src/Pricing.Api/Controllers/QuotesController.cs:28
+      - src/Pricing.Api/Controllers/QuotesController.cs:42
+      - src/Pricing.Api/Controllers/QuotesController.cs:49
+
+  - id: pricing-client-config
+    area: config
+    question: Where does Pricing.Client get its base address?
+    expected: Configuration key Clients:Pricing:BaseAddress through PricingClientOptions; AddPricingClient returns the IHttpClientBuilder.
+    evidence:
+      - src/Pricing.Client/PricingClientOptions.cs:5
+      - src/Pricing.Client/ServiceCollectionExtensions.cs:10
+      - src/Pricing.Client/ServiceCollectionExtensions.cs:13
+      - src/Pricing.Client/ServiceCollectionExtensions.cs:17
+
+  - id: pricing-calculation
+    area: logic
+    question: Where is the monthly payment computed?
+    expected: LeaseCalculator.MonthlyPayment(assetValue, annualRatePercent, termMonths, residualPercent).
+    evidence:
+      - src/Pricing.Api/Pricing/LeaseCalculator.cs:6
+
+  - id: pricing-test-host
+    area: tests
+    question: How do the tests host the API?
+    expected: WebApplicationFactory<Program> with the EF Core in-memory provider instead of PostgreSQL; no WireMock in this repository.
+    evidence:
+      - tests/Pricing.Api.Tests/PricingApiFactory.cs:10
+      - tests/Pricing.Api.Tests/PricingApiFactory.cs:20
+
+  - id: pricing-container
+    area: infra
+    question: How is the API containerised?
+    expected: Dockerfile stage runtime on mcr.microsoft.com/dotnet/aspnet:8.0, listening on port 8080.
+    evidence:
+      - Dockerfile:23
+      - Dockerfile:26
+      - Dockerfile:27

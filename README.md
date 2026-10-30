@@ -23,3 +23,7 @@ docker build --target runtime -t lab-pricing .
 ```
 
 A tag `v*` publishes `Pricing.Client` from GitHub Actions.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
